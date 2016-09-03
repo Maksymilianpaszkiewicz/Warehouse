@@ -19,13 +19,12 @@ public:
 	Resource(ResourceType type) : Type_(type) {
 	}
 	~Resource();
-
-	ResourceType Type_;
-	static TMap<ResourceType, Resource> Resources_Map;
-
+	/// Function called in Begin play of GameMode
 	static void initializeMap() {
 		Resources_Map.Add(ResourceType::A, Resource(ResourceType::A));
 		Resources_Map.Add(ResourceType::B, Resource(ResourceType::B));
 		Resources_Map.Add(ResourceType::C, Resource(ResourceType::C));
 	}
+	ResourceType Type_;
+	static TMap<ResourceType, Resource> Resources_Map;
 };

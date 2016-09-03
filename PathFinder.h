@@ -8,6 +8,7 @@
 #include "PathFinder.generated.h"
 
 class AWarehouseGameMode;
+class UTaskHandler;
 /* NOTES
 	PathFinder can currently only take orders from one OverMind
 
@@ -20,12 +21,7 @@ class WAREHOUSE_API UPathFinder : public UActorComponent
 public:
 	enum States {
 		Idle,
-		Moving,
-		Bidding,
-		WaitForOverMind,
-		PickingResource,
-		DeliveringResource,
-		FinishedTask
+		Moving
 	};
 
 	// Sets default values for this component's properties
@@ -41,13 +37,11 @@ public:
 		CurrentTarget_ = target;
 	}
 
-	void enterAuction(const Task &task);
+	void setDestination(ANodeActor *destination);
 
-	void sendBid();
-
-	void grantTask();
-
-	void rejectTask();
+	ANodeActor *getCurrentNode() {
+		return CurrentNode_;
+	}
 
 	static float straight_distance(ANodeActor *node, ANodeActor *destination);
 	/** Chooses a shortest path from start to finnish*/
@@ -75,14 +69,10 @@ private:
 	/* An array of Nodes that lead to the Destination_ (inverted order) */
 	TArray<ANodeActor*> CurrentPath_;
 
-	TArray<ANodeActor*> toResource_;
-	TArray<ANodeActor*> toFinnish_;
-
 	float Speed_;
 	States State_;
 	AActor *Owner_;
 
-	Task CurrentTask_;
-
 	AWarehouseGameMode *OverMind_;
+	UTaskHandler *TaskHandler_;
 };

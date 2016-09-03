@@ -2,6 +2,7 @@
 
 #include "Warehouse.h"
 #include "WarehouseGameMode.h"
+#include "TaskHandler.h"
 #include "PathFinder.h"
 
 // Sets default values for this component's properties
@@ -12,7 +13,7 @@ UPathFinder::UPathFinder()
 	bWantsBeginPlay = true;
 	PrimaryComponentTick.bCanEverTick = true;
 	// ...
-	State_ = DeliveringResource;
+	State_ = Moving;
 	Speed_ = 500.0f;
 	Owner_ = GetOwner();
 	CurrentNode_ = nullptr;
@@ -24,6 +25,7 @@ void UPathFinder::BeginPlay()
 {
 	Super::BeginPlay();
 	OverMind_ = Cast<AWarehouseGameMode>(GetWorld()->GetAuthGameMode());
+	TaskHandler_ = Cast<UTaskHandler>(Owner_->GetComponentByClass(UTaskHandler::StaticClass()));
 	// ...
 }
 
@@ -53,29 +55,10 @@ void UPathFinder::TickComponent( float DeltaTime, ELevelTick TickType, FActorCom
 	Super::TickComponent( DeltaTime, TickType, ThisTickFunction );
 	switch (State_) {
 	case Idle: {
-		// Waiting for overmind to start auction for task
+		// Waiting
 	}
 	break;
-	case WaitForOverMind: {
-		// Waiting for overmind answer to your auction bid
-	}
-	break;
-	case FinishedTask: {
-		// After finishing current task, tell overmind that you are ready for next task
-		OverMind_->enqueueForTask(this);
-		State_ = Idle;
-	}
-	break;
-	case Bidding: {
-		// Auction was started, sending my bid
-		sendBid();
-	}
-	break;
-	case PickingResource: {
-		moving(DeltaTime);
-	}
-	break;
-	case DeliveringResource: {
+	case Moving: {
 		moving(DeltaTime);
 	}
 	break;
@@ -83,106 +66,37 @@ void UPathFinder::TickComponent( float DeltaTime, ELevelTick TickType, FActorCom
 	// ...
 }
 
-void UPathFinder::enterAuction(const Task &task) {
-	CurrentTask_ = Task(task.Type_, task.Exit_, task.Resource_);
-	State_ = Bidding;
-}
-
-void UPathFinder::sendBid() {
-	float bestbid = -1;
-	float bid, temp;
-	/// Calculating best bid
-	TArray<ANodeActor*> toResource;
-	TArray<ANodeActor*> toFinnish;
-	ANodeActor *closestResource = nullptr;
-	for (ANodeActor *resource : *(CurrentTask_.Resource_)) {
-		bid = 0;
-		toResource = choosePath(CurrentNode_, resource, &temp);
-		bid += temp;
-		toFinnish = choosePath(resource, CurrentTask_.Exit_, &temp);
-		bid += temp;
-		if (bestbid != -1) {
-			if (bestbid > bid) {
-				bestbid = bid;
-				closestResource = resource;
-			}
-		}
-		else {
-			bestbid = bid;
-			closestResource = resource;
-		}
-	}
-	if (bestbid != -1) {
-		toResource_ = choosePath(CurrentNode_, closestResource);
-		toFinnish_ = choosePath(closestResource, CurrentTask_.Exit_);
-		OverMind_->acceptBid(this, bestbid);
-		State_ = WaitForOverMind;
-	}
-	else {
-	/// cant get to the resource 
-		UE_LOG(LogClass, Log, TEXT("Can't get to resource %d"), (int)CurrentTask_.Type_);
-		State_ = Idle;
-	}
-}
-
-void UPathFinder::grantTask() {
-	State_ = PickingResource;
-	Destination_ = nullptr;
+void UPathFinder::setDestination(ANodeActor *destination) {
+	Destination_ = destination;
 	chooseNextTarget();
-}
-
-void UPathFinder::rejectTask() {
-	Destination_ = nullptr;
-	State_ = Idle;
+	choseNewTarget();
 }
 
 void UPathFinder::chooseNextTarget() {
 	CurrentTarget_ = nullptr;
 	
-	if (Destination_ == nullptr) {
-		
-		if (State_ == PickingResource) {
-			CurrentPath_ = toResource_;
-		}
-		else if (State_ == DeliveringResource) {
-			CurrentPath_ = toFinnish_;
-		}
-
-		if (CurrentPath_.Num() != 0) {
-			Destination_ = CurrentPath_[0];
-			choseNewTarget();
+	if (Destination_ != nullptr) {
+		if (CurrentNode_ == Destination_) {
+			State_ = Idle;
+			TaskHandler_->stepFinished();
 		}
 		else {
-			if (State_ == PickingResource) {
-				State_ = DeliveringResource;
+			if (CurrentPath_.Num() == 0) {
+				CurrentPath_ = choosePath(CurrentNode_, Destination_);
+				if (CurrentPath_.Num() == 0) {
+					UE_LOG(LogClass, Log, TEXT("Error, can't find path to a chosen Destination"));
+					State_ = Idle;
+				}
 			}
-			else {
-				State_ = FinishedTask;
-			}
-			return;
-		}
-	}
-	if (Destination_ != CurrentNode_) {
-		if (CurrentPath_.Num() != 0) {
 			CurrentTarget_ = CurrentPath_.Last();
 			CurrentPath_.RemoveAt(CurrentPath_.Num() - 1);
-		}
-		else {
-			//Destination can't be reached from CurrentNode_
-			UE_LOG(LogClass, Log, TEXT("Error, can't find path to a chosen Destination"));
-			State_ = FinishedTask;
+			State_ = Moving;
 		}
 	}
 	else {
-		Destination_ = nullptr;
-		if (State_ == PickingResource) {
-			State_ = DeliveringResource;
-			chooseNextTarget();
-		}
-		else {
-			State_ = FinishedTask;
-		}
+		State_ = Idle;
 	}
+
 	
 }
 
@@ -190,14 +104,14 @@ void UPathFinder::choseNewTarget() {
 	UActorComponent *actor = Owner_->GetComponentByClass(UTextRenderComponent::StaticClass());
 	UTextRenderComponent *text = Cast<UTextRenderComponent>(actor);
 	if (text) {
-		text->SetText(Destination_->GetName() + "\n" + (int)CurrentTask_.Type_);
+		FString stringText = FString::Printf(TEXT("%s"), *Destination_->GetName());
+		text->SetText(FText::FromString(stringText));
 	}
 }
 
 float UPathFinder::straight_distance(ANodeActor *node, ANodeActor *destination) {
 	return (node->GetActorLocation() - destination->GetActorLocation()).Size();
 }
-
 
 struct NodeWrapper {
 	NodeWrapper(ANodeActor *node = nullptr) : Node(node) {
@@ -272,6 +186,9 @@ TArray<ANodeActor*> UPathFinder::choosePath(ANodeActor *start, ANodeActor *finni
 				//openArray.Add(NodeWrapper(neighbour));
 			}
 		}
+	}
+	if (distance != nullptr) {
+		*distance = -1.0f;
 	}
 	return TArray<ANodeActor*>();
 }

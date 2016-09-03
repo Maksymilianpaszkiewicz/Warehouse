@@ -1,8 +1,8 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Warehouse.h"
-#include "PathFinder.h"
 #include "WarehouseGameMode.h"
+#include "TaskHandler.h"
 
 AWarehouseGameMode::AWarehouseGameMode() {
 	PrimaryActorTick.bCanEverTick = true;
@@ -26,7 +26,7 @@ void AWarehouseGameMode::BeginPlay() {
 	TArray<ResourceType> types;
 	Resource::Resources_Map.GenerateKeyArray(types);
 	for (ResourceType type : types) {
-		resourceNodesMap_.Add(type, TArray<ANodeActor*>());
+		ResourceNodesMap_.Add(type, TArray<ANodeActor*>());
 	}
 	
 	for (TActorIterator<ANodeActor> ActorItr(GetWorld()); ActorItr; ++ActorItr)
@@ -35,7 +35,7 @@ void AWarehouseGameMode::BeginPlay() {
 		ANodeActor *Node = *ActorItr;
 		NodeActorTypesMap_[Node->getNodeType()].Add(Node);
 		for (ResourceType type : Node->getResourceTypes()) {
-			resourceNodesMap_[type].Add(Node);
+			ResourceNodesMap_[type].Add(Node);
 		}
 	}
 	
@@ -46,9 +46,9 @@ void AWarehouseGameMode::BeginPlay() {
 	UE_LOG(LogClass, Log, TEXT("Size of Exit array: %d"), NodeActorTypesMap_[NodeActorType::Exit].Num());
 }
 
-void AWarehouseGameMode::enqueueForTask(UPathFinder *car) {
-	if (!waitingForTask_.Contains(car)) {
-		waitingForTask_.Add(car);
+void AWarehouseGameMode::enqueueForTask(UTaskHandler *task_executor) {
+	if (!waitingForTask_.Contains(task_executor)) {
+		waitingForTask_.Add(task_executor);
 	}
 }
 
@@ -67,8 +67,8 @@ bool AWarehouseGameMode::startAuction() {
 	if (!tasksQueue_.IsEmpty() && waitingForTask_.Num() != 0) {
 		Task t;
 		tasksQueue_.Peek(t);
-		for (UPathFinder *car : waitingForTask_) {
-			car->enterAuction(t);
+		for (UTaskHandler *task_executor : waitingForTask_) {
+			task_executor->enterAuction(t);
 		}
 		UE_LOG(LogClass, Log, TEXT("Starting acution to pick up %d to %s"), (int)t.Type_, *(t.Exit_->GetName()));
 		return true;
@@ -77,22 +77,22 @@ bool AWarehouseGameMode::startAuction() {
 	return false;
 }
 
-void AWarehouseGameMode::acceptBid(UPathFinder *ref, float bid) {
-	auctioners_.HeapPush(CarWrapper(ref, bid), CarPredicate());
+void AWarehouseGameMode::acceptBid(UTaskHandler *ref, float bid) {
+	auctioners_.HeapPush(Auctioneer(ref, bid), AuctioneerPredicate());
 }
 
 void AWarehouseGameMode::giveOutTask() {
 	if (auctioners_.Num() != 0) {
 		Task t;
 		tasksQueue_.Dequeue(t);
-		CarWrapper winner;
-		auctioners_.HeapPop(winner, CarPredicate());
-		winner.Car->grantTask();
-		waitingForTask_.RemoveSingle(winner.Car);
-		for (CarWrapper loser : auctioners_) {
-			loser.Car->rejectTask();
+		Auctioneer winner;
+		auctioners_.HeapPop(winner, AuctioneerPredicate());
+		winner.Executor_->grantTask();
+		waitingForTask_.RemoveSingle(winner.Executor_);
+		for (Auctioneer loser : auctioners_) {
+			loser.Executor_->rejectTask();
 		}
-		UE_LOG(LogClass, Log, TEXT("winner of the task to pick up %d to %s is %s"), (int)t.Type_ ,*(t.Exit_->GetName()), *(winner.Car->GetOwner()->GetName()));
+		UE_LOG(LogClass, Log, TEXT("winner of the task to pick up %d to %s is %s"), (int)t.Type_ ,*(t.Exit_->GetName()), *(winner.Executor_->GetOwner()->GetName()));
 	}
 }
 
@@ -101,11 +101,15 @@ void AWarehouseGameMode::generateTask() {
 		if (NodeActorTypesMap_[NodeActorType::Exit].Num() > 0 && Resource::Resources_Map.Num() > 0) {
 			int exitIndex = FMath::RoundToInt(FMath::FRand() * (NodeActorTypesMap_[NodeActorType::Exit].Num() - 1));
 			int ResourceIndex = FMath::RoundToInt(FMath::FRand() * (Resource::Resources_Map.Num() - 1));
-			tasksQueue_.Enqueue(Task(ResourceType(ResourceIndex), NodeActorTypesMap_[NodeActorType::Exit][exitIndex], &resourceNodesMap_[ResourceType(ResourceIndex)]));
+			tasksQueue_.Enqueue(Task(ResourceType(ResourceIndex), NodeActorTypesMap_[NodeActorType::Exit][exitIndex]));
 			//UE_LOG(LogClass, Log, TEXT("added task with Node: %d"), nodeIndex);
 		}
 	}
 	GetWorldTimerManager().SetTimer(taskGeneratorTimer_, this, &AWarehouseGameMode::generateTask, taskGeneratorDelay_, false);
+}
+
+TArray<ANodeActor*> AWarehouseGameMode::getNodesWithResource(ResourceType type) {
+	return ResourceNodesMap_[type];
 }
 
 // Called every frame
