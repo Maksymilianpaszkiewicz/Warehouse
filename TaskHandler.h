@@ -33,7 +33,6 @@ public:
 	void stepFinished();
 
 private:
-
 	void calculateBestCost();
 
 	AActor *Owner_;
