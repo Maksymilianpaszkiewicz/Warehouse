@@ -3,6 +3,8 @@
 #include "Warehouse.h"
 #include "Resource.h"
 
+TMap<ResourceType, Resource> Resource::Resources_Map;
+
 Resource::~Resource()
 {
 }

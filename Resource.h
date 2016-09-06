@@ -7,7 +7,8 @@ enum class ResourceType : uint8
 {
 	A	UMETA(DisplayName = "A"),
 	B	UMETA(DisplayName = "B"),
-	C	UMETA(DisplayName = "C")
+	C	UMETA(DisplayName = "C"),
+	None UMETA(DisplayName = "None")
 };
 
 /**

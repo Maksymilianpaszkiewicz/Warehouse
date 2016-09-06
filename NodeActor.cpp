@@ -3,8 +3,6 @@
 #include "Warehouse.h"
 #include "NodeActor.h"
 
-TMap<ResourceType, Resource> Resource::Resources_Map;
-
 // Sets default values
 ANodeActor::ANodeActor() 
 {
@@ -19,7 +17,6 @@ ANodeActor::ANodeActor()
 void ANodeActor::BeginPlay()
 {
 	Super::BeginPlay();
-
 }
 
 // Called every frame

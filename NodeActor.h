@@ -3,7 +3,6 @@
 #pragma once
 
 #include "GameFramework/Actor.h"
-#include "Resource.h"
 #include "NodeActor.generated.h"
 
 UENUM()
@@ -37,16 +36,10 @@ public:
 		return Type_;
 	}
 
-	TArray<ResourceType> &getResourceTypes() {
-		return ResourceTypes_;
-	}
+protected:
 
-private:
 	UPROPERTY(EditAnywhere, Category = "PathFinding")
 	NodeActorType Type_;
-
-	UPROPERTY(EditAnywhere, Category = "PathFinding")
-	TArray<ResourceType> ResourceTypes_;
 
 	UPROPERTY(EditAnywhere, Category = "PathFinding")
 	TArray<ANodeActor*> Neighbours;

@@ -2,6 +2,7 @@
 
 #pragma once
 #include "NodeActor.h"
+#include "Resource.h"
 /**
  * 
  */

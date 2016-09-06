@@ -3,6 +3,7 @@
 #include "Warehouse.h"
 #include "WarehouseGameMode.h"
 #include "PathFinder.h"
+#include "NodeResource.h"
 #include "TaskHandler.h"
 
 
@@ -46,6 +47,10 @@ void UTaskHandler::TickComponent( float DeltaTime, ELevelTick TickType, FActorCo
 			} break;
 			case TaskStep::Collect: {
 				//// Collecting
+				ANodeResource *resource_node = Cast<ANodeResource>(current_step.getDestination());
+				if (resource_node) {
+					resource_node->collect();
+				}
 				ReadyForNewStep_ = true;
 			} break;
 			}
@@ -76,9 +81,9 @@ void UTaskHandler::calculateBestCost() {
 	/// Calculating best bid
 	ANodeActor *closestResource = nullptr;
 
-	TArray<ANodeActor*> nodesWithResource = OverMind_->getNodesWithResource(CurrentTask_.Type_);
+	TArray<ANodeResource*> nodesWithResource = OverMind_->getNodesWithResource(CurrentTask_.Type_);
 	ANodeActor *currentNode = PathFinder_->getCurrentNode();
-	for (ANodeActor *resource : nodesWithResource) {
+	for (ANodeResource *resource : nodesWithResource) {
 		cost = 0;
 		if (currentNode == resource) {
 			temp = 0;

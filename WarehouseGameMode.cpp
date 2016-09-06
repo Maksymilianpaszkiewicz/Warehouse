@@ -4,6 +4,7 @@
 #include "WarehouseGameMode.h"
 #include "TaskHandler.h"
 
+
 AWarehouseGameMode::AWarehouseGameMode() {
 	PrimaryActorTick.bCanEverTick = true;
 
@@ -26,7 +27,7 @@ void AWarehouseGameMode::BeginPlay() {
 	TArray<ResourceType> types;
 	Resource::Resources_Map.GenerateKeyArray(types);
 	for (ResourceType type : types) {
-		ResourceNodesMap_.Add(type, TArray<ANodeActor*>());
+		ResourceNodesMap_.Add(type, TArray<ANodeResource*>());
 	}
 	
 	for (TActorIterator<ANodeActor> ActorItr(GetWorld()); ActorItr; ++ActorItr)
@@ -34,8 +35,9 @@ void AWarehouseGameMode::BeginPlay() {
 		// Same as with the Object Iterator, access the subclass instance with the * or -> operators.
 		ANodeActor *Node = *ActorItr;
 		NodeActorTypesMap_[Node->getNodeType()].Add(Node);
-		for (ResourceType type : Node->getResourceTypes()) {
-			ResourceNodesMap_[type].Add(Node);
+		ANodeResource *resource_node = Cast<ANodeResource>(Node);
+		if (resource_node) {
+			ResourceNodesMap_[resource_node->getResourceType()].Add(resource_node);
 		}
 	}
 	
@@ -73,7 +75,7 @@ bool AWarehouseGameMode::startAuction() {
 		UE_LOG(LogClass, Log, TEXT("Starting acution to pick up %d to %s"), (int)t.Type_, *(t.Exit_->GetName()));
 		return true;
 	}
-	UE_LOG(LogClass, Log, TEXT("No one is waiting for new task"));
+	UE_LOG(LogClass, Log, TEXT("No one is waiting for new task or no tasks"));
 	return false;
 }
 
@@ -108,7 +110,7 @@ void AWarehouseGameMode::generateTask() {
 	GetWorldTimerManager().SetTimer(taskGeneratorTimer_, this, &AWarehouseGameMode::generateTask, taskGeneratorDelay_, false);
 }
 
-TArray<ANodeActor*> AWarehouseGameMode::getNodesWithResource(ResourceType type) {
+TArray<ANodeResource*> AWarehouseGameMode::getNodesWithResource(ResourceType type) {
 	return ResourceNodesMap_[type];
 }
 

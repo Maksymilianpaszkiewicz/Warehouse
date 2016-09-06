@@ -14,7 +14,7 @@ UPathFinder::UPathFinder()
 	PrimaryComponentTick.bCanEverTick = true;
 	// ...
 	State_ = Moving;
-	Speed_ = 500.0f;
+	Speed_ = 700.0f;
 	Owner_ = GetOwner();
 	CurrentNode_ = nullptr;
 	Activate();

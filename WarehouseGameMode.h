@@ -5,6 +5,8 @@
 #include "GameFramework/GameMode.h"
 #include "NodeActor.h"
 #include "Task.h"
+#include "Resource.h"
+#include "NodeResource.h"
 #include "WarehouseGameMode.generated.h"
 
 class UTaskHandler;
@@ -58,7 +60,7 @@ public:
 	void giveOutTask();
 
 	// returns array of Nodes that contain specified Resource
-	TArray<ANodeActor*> getNodesWithResource(ResourceType type);
+	TArray<ANodeResource*> getNodesWithResource(ResourceType type);
 
 private:
 	States State_;
@@ -69,7 +71,7 @@ private:
 	TQueue<Task> tasksQueue_;
 
 	TMap<NodeActorType, TArray<ANodeActor*>> NodeActorTypesMap_;
-	TMap<ResourceType, TArray<ANodeActor*>> ResourceNodesMap_;
+	TMap<ResourceType, TArray<ANodeResource*>> ResourceNodesMap_;
 
 	TArray<UTaskHandler*> waitingForTask_;
 	TArray<Auctioneer> auctioners_;
